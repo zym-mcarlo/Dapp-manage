@@ -12,7 +12,7 @@
             :disabled="false">
           </el-input>
           <div class="btn">
-            <el-button type="primary" @click="modifyPrice_()" :icon="modifyState ? 'el-icon-loading' : ''">修改</el-button>
+            <el-button type="primary" @click="confirmModify_()" :icon="modifyState ? 'el-icon-loading' : ''">修改</el-button>
           </div>
         </div>
         <div class="group">
@@ -114,11 +114,23 @@ export default {
         })
       })
     },
+    confirmModify_ () {
+      this.$alert('确定要修改单价吗？', '修改单价', {
+        confirmButtonText: '确定',
+        type: 'warning',
+        callback: action => {
+          if (action === 'confirm') {
+            this.modifyPrice_()
+          }
+        }
+      })
+    },
     modifyPrice_ () { // 修改单价
       this.modifyState = true
       let num = BigNumber(this.singlePrice).times(this.e18).toFixed()
       this.contractMbf.methods.setTargetPrice(num).send({
-        from: this.wallet
+        from: this.wallet,
+        gasPrice: this.gasPrice
       }).then(res => {
         this.modifyState = false
         this.$message({ message: '修改单价成功', type: 'success' })
@@ -131,7 +143,8 @@ export default {
     endBuy_ () { // 结束认购
       this.endBuyState = true
       this.contractMbf.methods.finalize().send({
-        from: this.wallet
+        from: this.wallet,
+        gasPrice: this.gasPrice
       }).then(res => {
         this.endBuyState = false
         this.getBuyState_()
@@ -145,7 +158,8 @@ export default {
       if (!this.walletInp) { return }
       this.addState = true
       this.contractMbf.methods.addMember(this.walletInp).send({
-        from: this.wallet
+        from: this.wallet,
+        gasPrice: this.gasPrice
       }).then(res => {
         this.addState = false
         this.$message({ message: '添加成功', type: 'success' })
@@ -158,7 +172,8 @@ export default {
       if (!this.walletInp) { return }
       this.removeState = true
       this.contractMbf.methods.removeMember(this.walletInp).send({
-        from: this.wallet
+        from: this.wallet,
+        gasPrice: this.gasPrice
       }).then(res => {
         this.removeState = false
         this.$message({ message: '删除成功', type: 'success' })
@@ -166,6 +181,9 @@ export default {
         this.removeState = false
         this.$message({ message: err.message, type: 'error' })
       })
+    },
+    getDai_ () {
+
     }
   }
 }

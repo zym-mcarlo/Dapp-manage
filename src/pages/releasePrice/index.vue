@@ -21,6 +21,10 @@
               placeholder="请输入 DAI">
             </el-input>
           </div>
+          <div class="input-group" style="margin-bottom: 20px;">
+            <label for="">需存入的DAI</label>
+            <span>{{needToSaveDai}}</span>
+          </div>
           <div class="input-group">
             <label for="">DAI</label>
             <el-button v-if="!isAuthorization" type="primary" @click="authorization_()" :icon="authorizationState ? 'el-icon-loading' : ''">授权</el-button>
@@ -48,7 +52,7 @@
           </el-table-column>
           <el-table-column
             prop="profit"
-            label="发放数量">
+            label="该期总收益">
           </el-table-column>
         </el-table>
       </section>
@@ -72,6 +76,7 @@ export default {
       isAuthentication: false,
       isAuthorization: false,
       allProfit: '',
+      saveSinglePrice: '',
 
       relevanceState: false,
       authorizationState: false,
@@ -84,6 +89,9 @@ export default {
   computed: {
     wallet () {
       return this.$store.wallet
+    },
+    needToSaveDai () {
+      return Number(BigNumber(this.allProfit).times(this.saveSinglePrice).toFixed()) || 0
     }
   },
   watch: {
@@ -97,6 +105,7 @@ export default {
         this.isAuthentication = true
         this.getAuthorizationState_()
         this.getProfitList_()
+        this.getDAINum_()
       } else {
         this.isAuthentication = false
       }
@@ -111,6 +120,21 @@ export default {
           duration: 0,
           type: 'error'
         })
+      })
+    },
+    getDAINum_ () { // 获取DAI single price
+      this.contractMbf.methods.maxSupply().call().then(maxSupply => {
+        this.contractMbf.methods.owner().call().then(owner => {
+          this.contractMbf.methods.balanceOf(owner).call().then(balance => {
+            this.saveSinglePrice = BigNumber(maxSupply).minus(balance).div(maxSupply).toFixed()
+          }).catch(err => {
+            this.$notify({ title: '获取 balance 失败', message: err.message, duration: 0, type: 'error' })
+          })
+        }).catch(err => {
+          this.$notify({ title: '获取 owner 失败', message: err.message, duration: 0, type: 'error' })
+        })
+      }).catch(err => {
+        this.$notify({ title: '获取 maxSupply 失败', message: err.message, duration: 0, type: 'error' })
       })
     },
     getProfitList_ () { // 获取发放收益记录
@@ -146,7 +170,8 @@ export default {
     authorization_ () { // 授权
       this.authorizationState = true
       this.contractMbt.methods.approve(this.mbf, this.canUse).send({
-        from: this.wallet
+        from: this.wallet,
+        gasPrice: this.gasPrice
       }).then(res => {
         this.$message({ message: '授权成功', type: 'success' })
         this.authorizationState = false
@@ -160,7 +185,8 @@ export default {
       this.submitState = true
       let ctkRequired = BigNumber(this.allProfit).times(this.e18).toFixed()
       this.contractMbf.methods.pay(ctkRequired).send({
-        from: this.wallet
+        from: this.wallet,
+        gasPrice: this.gasPrice
       }).then(res => {
         this.$message({ message: '提交成功', type: 'success' })
         this.submitState = false
